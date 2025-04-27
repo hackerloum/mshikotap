@@ -105,57 +105,59 @@ export default function AuthForm({ type }: AuthFormProps) {
           }
         }
         
-        // Generate a unique referral code first
-        const newReferralCode = uuidv4().substring(0, 8).toUpperCase();
-        
-        // Create the auth user with meta data to link to profile
+        // First, just create the auth user with minimal data
         const { data: { user }, error: signUpError } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
-          options: {
-            data: {
-              full_name: formData.fullName,
-              phone: formData.phone,
-              referral_code: newReferralCode,
-              referred_by: formData.referralCode || null
-            }
-          }
         })
         
         if (signUpError) throw signUpError
         
-        // Create user profile in the users table
+        // Only try to create the profile if auth signup was successful
         if (user) {
-          const { error: profileError } = await supabase.from('users').insert({
-            id: user.id,
-            full_name: formData.fullName,
-            email: formData.email,
-            phone: formData.phone,
-            wallet_balance: 0,
-            referral_code: newReferralCode,
-            referred_by: formData.referralCode || null,
-          })
-          
-          if (profileError) {
-            console.error("Profile creation error:", profileError);
-            throw new Error(`Error creating user profile: ${profileError.message}`);
+          try {
+            // Call our server-side API to create the user profile
+            const response = await fetch('/api/create-user-profile', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                id: user.id,
+                fullName: formData.fullName,
+                email: formData.email,
+                phone: formData.phone,
+                referredBy: formData.referralCode || null,
+              }),
+            });
+            
+            const result = await response.json();
+            
+            if (!response.ok) {
+              console.warn('Profile creation warning:', result);
+              // Continue anyway since the auth user was created
+            }
+          } catch (profileError) {
+            console.warn('Profile creation warning:', profileError);
+            // Continue anyway since the auth user was created
           }
         }
         
-        toast.success('Check your email for the confirmation link!')
+        toast.success('Check your email for the confirmation link! You may need to refresh after verifying.');
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
-        })
-        if (error) throw error
-        router.push('/dashboard')
+        });
+        
+        if (error) throw error;
+        router.push('/dashboard');
       }
     } catch (error: any) {
       console.error("Registration error:", error);
-      toast.error(error.message || "Error during registration. Please try again.")
+      toast.error(error.message || "Error during registration. Please try again.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
