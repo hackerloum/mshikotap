@@ -166,4 +166,14 @@ CREATE POLICY "Users can create withdrawals" ON withdrawals
 -- Users can view own withdrawals
 CREATE POLICY "Users can view own withdrawals" ON withdrawals
   FOR SELECT
-  USING (auth.uid() = user_id); 
+  USING (auth.uid() = user_id);
+
+-- Allow public user creation during signup
+CREATE POLICY "Allow public user creation during signup" ON users
+  FOR INSERT
+  WITH CHECK (true);
+
+-- Allow authenticated users to insert their own profile
+CREATE POLICY "Users can insert their own profile" ON users
+  FOR INSERT
+  WITH CHECK (auth.uid() = id); 
