@@ -47,6 +47,10 @@ export interface WithdrawalRequest {
   status: 'pending' | 'approved' | 'rejected';
   requested_at: string;
   processed_at?: string;
+  users?: {
+    full_name: string;
+    email: string;
+  };
 }
 
 export interface DashboardStats {
