@@ -105,10 +105,21 @@ export default function AuthForm({ type }: AuthFormProps) {
           }
         }
         
+        // Generate a unique referral code first
+        const newReferralCode = uuidv4().substring(0, 8).toUpperCase();
+        
+        // Create the auth user with meta data to link to profile
         const { data: { user }, error: signUpError } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
-          phone: formData.phone,
+          options: {
+            data: {
+              full_name: formData.fullName,
+              phone: formData.phone,
+              referral_code: newReferralCode,
+              referred_by: formData.referralCode || null
+            }
+          }
         })
         
         if (signUpError) throw signUpError
@@ -117,15 +128,18 @@ export default function AuthForm({ type }: AuthFormProps) {
         if (user) {
           const { error: profileError } = await supabase.from('users').insert({
             id: user.id,
+            full_name: formData.fullName,
             email: formData.email,
             phone: formData.phone,
-            full_name: formData.fullName,
             wallet_balance: 0,
-            referral_code: uuidv4().substring(0, 8).toUpperCase(),
+            referral_code: newReferralCode,
             referred_by: formData.referralCode || null,
           })
           
-          if (profileError) throw profileError
+          if (profileError) {
+            console.error("Profile creation error:", profileError);
+            throw new Error(`Error creating user profile: ${profileError.message}`);
+          }
         }
         
         toast.success('Check your email for the confirmation link!')
@@ -138,7 +152,8 @@ export default function AuthForm({ type }: AuthFormProps) {
         router.push('/dashboard')
       }
     } catch (error: any) {
-      toast.error(error.message)
+      console.error("Registration error:", error);
+      toast.error(error.message || "Error during registration. Please try again.")
     } finally {
       setLoading(false)
     }
