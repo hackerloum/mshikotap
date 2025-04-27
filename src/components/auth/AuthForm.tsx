@@ -106,55 +106,54 @@ export default function AuthForm({ type }: AuthFormProps) {
         }
         
         // First, just create the auth user with minimal data
-        try {
-          const { data: { user }, error: signUpError } = await supabase.auth.signUp({
-            email: formData.email,
-            password: formData.password,
-            options: {
-              emailRedirectTo: `${window.location.origin}/auth/login`,
-            },
-          })
-          
-          if (signUpError) throw signUpError
-          
-          // Only try to create the profile if auth signup was successful
-          if (user) {
-            try {
-              console.log('Creating user profile for:', user.id);
-              // Call our server-side API to create the user profile
-              const response = await fetch('/api/create-user-profile', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  id: user.id,
-                  fullName: formData.fullName,
-                  email: formData.email,
-                  phone: formData.phone,
-                  referredBy: formData.referralCode || null,
-                }),
-              });
-              
-              const result = await response.json();
-              
-              if (!response.ok) {
-                console.error('Profile creation error:', result);
-                throw new Error(result.message || 'Failed to create user profile');
-              }
-              
-              toast.success('Check your email for the confirmation link! You may need to refresh after verifying.');
-            } catch (profileError: any) {
-              console.error('Profile creation error:', profileError);
-              // The user was created in Auth but profile creation failed
-              toast.error('Your account was created but profile setup failed. Please contact support.');
-            }
-          } else {
-            toast.error('Failed to create your account. Please try again.');
-          }
-        } catch (signUpError: any) {
+        const { data: { user }, error: signUpError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/login`,
+          },
+        })
+        
+        if (signUpError) {
           console.error("Registration error:", signUpError);
           toast.error(signUpError.message || "Error during registration. Please try again.");
+          return;
+        }
+        
+        // Only try to create the profile if auth signup was successful
+        if (user) {
+          try {
+            console.log('Creating user profile for:', user.id);
+            // Call our server-side API to create the user profile
+            const response = await fetch('/api/create-user-profile', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                id: user.id,
+                fullName: formData.fullName,
+                email: formData.email,
+                phone: formData.phone,
+                referredBy: formData.referralCode || null,
+              }),
+            });
+            
+            const result = await response.json();
+            
+            if (!response.ok) {
+              console.error('Profile creation error:', result);
+              throw new Error(result.message || 'Failed to create user profile');
+            }
+            
+            toast.success('Check your email for the confirmation link! You may need to refresh after verifying.');
+          } catch (profileError: any) {
+            console.error('Profile creation error:', profileError);
+            // The user was created in Auth but profile creation failed
+            toast.error('Your account was created but profile setup failed. Please contact support.');
+          }
+        } else {
+          toast.error('Failed to create your account. Please try again.');
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -176,24 +175,46 @@ export default function AuthForm({ type }: AuthFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {type === 'signup' && (
-        <div>
-          <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
-            Full Name
-          </label>
-          <input
-            id="fullName"
-            type="text"
-            required
-            className={`input-field mt-1 w-full ${errors.fullName ? 'border-red-500' : ''}`}
-            value={formData.fullName}
-            onChange={(e) =>
-              setFormData({ ...formData, fullName: e.target.value })
-            }
-          />
-          {errors.fullName && (
-            <p className="mt-1 text-sm text-red-600">{errors.fullName}</p>
-          )}
-        </div>
+        <>
+          <div>
+            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
+              Full Name
+            </label>
+            <input
+              id="fullName"
+              type="text"
+              required
+              className={`input-field mt-1 w-full ${errors.fullName ? 'border-red-500' : ''}`}
+              value={formData.fullName}
+              onChange={(e) =>
+                setFormData({ ...formData, fullName: e.target.value })
+              }
+            />
+            {errors.fullName && (
+              <p className="mt-1 text-sm text-red-600">{errors.fullName}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+              Phone Number
+            </label>
+            <input
+              id="phone"
+              type="tel"
+              required
+              pattern="[0-9]+"
+              className={`input-field mt-1 w-full ${errors.phone ? 'border-red-500' : ''}`}
+              value={formData.phone}
+              onChange={(e) =>
+                setFormData({ ...formData, phone: e.target.value.replace(/[^0-9]/g, '') })
+              }
+            />
+            {errors.phone && (
+              <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+            )}
+          </div>
+        </>
       )}
       
       <div>
@@ -214,27 +235,6 @@ export default function AuthForm({ type }: AuthFormProps) {
           <p className="mt-1 text-sm text-red-600">{errors.email}</p>
         )}
       </div>
-
-      {type === 'signup' && (
-        <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-            Phone Number
-          </label>
-          <input
-            id="phone"
-            type="tel"
-            required
-            className={`input-field mt-1 w-full ${errors.phone ? 'border-red-500' : ''}`}
-            value={formData.phone}
-            onChange={(e) =>
-              setFormData({ ...formData, phone: e.target.value })
-            }
-          />
-          {errors.phone && (
-            <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
-          )}
-        </div>
-      )}
 
       <div>
         <label

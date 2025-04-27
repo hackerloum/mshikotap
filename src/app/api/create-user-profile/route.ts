@@ -52,6 +52,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!userData.phone) {
+      console.error('Missing required field: phone')
+      return NextResponse.json(
+        { success: false, message: 'Missing required field: phone' },
+        { status: 400 }
+      )
+    }
+
+    // Validate phone number format
+    if (!/^[0-9]+$/.test(userData.phone)) {
+      console.error('Invalid phone number format')
+      return NextResponse.json(
+        { success: false, message: 'Phone number must contain only digits' },
+        { status: 400 }
+      )
+    }
+
     // Check if the user already exists
     const { data: existingUser, error: existingUserError } = await supabaseAdmin
       .from('users')
@@ -122,7 +139,7 @@ export async function POST(request: NextRequest) {
         id: userData.id,
         full_name: userData.fullName,
         email: userData.email,
-        phone: userData.phone || '',
+        phone: userData.phone,
         wallet_balance: 0,
         referral_code: referralCode,
         referred_by: referredByValid ? userData.referredBy : null,
@@ -131,14 +148,28 @@ export async function POST(request: NextRequest) {
     
     if (error) {
       console.error('Error creating user profile:', error)
+      let errorMessage = 'Error creating user profile'
+      let statusCode = 500
+
+      // Handle specific database errors
+      if (error.code === '23505') { // Unique constraint violation
+        if (error.message.includes('email')) {
+          errorMessage = 'Email already exists'
+          statusCode = 409
+        } else if (error.message.includes('phone')) {
+          errorMessage = 'Phone number already exists'
+          statusCode = 409
+        }
+      }
+
       return NextResponse.json(
         { 
           success: false, 
-          message: 'Error creating user profile', 
+          message: errorMessage, 
           error: error.message,
           details: error.details || error 
         },
-        { status: 500 }
+        { status: statusCode }
       )
     }
     
