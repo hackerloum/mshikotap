@@ -1,4 +1,4 @@
-import NextAuth, { NextAuthOptions } from 'next-auth';
+import NextAuth, { NextAuthOptions, User } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { supabase } from '@/lib/supabase';
 
@@ -25,12 +25,14 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
-          return {
+          const user: User = {
             id: data.user.id,
-            email: data.user.email,
+            email: data.user.email || '',
             name: data.user.user_metadata.full_name || '',
             role: data.user.user_metadata.role || 'user',
           };
+
+          return user;
         } catch (error) {
           console.error('Auth error:', error);
           return null;

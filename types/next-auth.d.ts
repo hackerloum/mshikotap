@@ -14,6 +14,7 @@ declare module "next-auth" {
     email: string;
     name?: string;
     role: string;
+    // Add any other fields that might be needed from Supabase
   }
 }
 
